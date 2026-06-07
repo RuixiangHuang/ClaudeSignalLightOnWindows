@@ -19,6 +19,9 @@ Windows desktop traffic light for Claude Code CLI and Cursor's official
 Yellow stays active until Claude emits another execution event. It does not
 guess based on keyboard input or a timer.
 
+When the state changes to yellow, the light breathes and Windows plays one
+notification chime. The sound is not repeated while the state remains yellow.
+
 ## Quick start
 
 1. Double-click `install-claude-hooks.cmd` once.

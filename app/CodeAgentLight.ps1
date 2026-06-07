@@ -28,6 +28,7 @@ trap {
 Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
+Add-Type -AssemblyName System
 
 $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -56,7 +57,15 @@ $xaml = @"
             <Ellipse x:Name="RedLight" Grid.Row="0" Width="52" Height="52"
                      Fill="#3A171A" Stroke="#663A404B" StrokeThickness="2"/>
             <Ellipse x:Name="YellowLight" Grid.Row="1" Width="52" Height="52"
-                     Fill="#3A3216" Stroke="#663A404B" StrokeThickness="2"/>
+                     Fill="#3A3216" Stroke="#663A404B" StrokeThickness="2">
+                <Ellipse.Effect>
+                    <DropShadowEffect x:Name="YellowGlow"
+                                      Color="#FFC83D"
+                                      BlurRadius="0"
+                                      ShadowDepth="0"
+                                      Opacity="0"/>
+                </Ellipse.Effect>
+            </Ellipse>
             <Ellipse x:Name="GreenLight" Grid.Row="2" Width="52" Height="52"
                      Fill="#163A27" Stroke="#663A404B" StrokeThickness="2"/>
             <TextBlock x:Name="StatusText" Grid.Row="3"
@@ -77,6 +86,7 @@ $redLight = $window.FindName("RedLight")
 $yellowLight = $window.FindName("YellowLight")
 $greenLight = $window.FindName("GreenLight")
 $statusText = $window.FindName("StatusText")
+$yellowGlow = $window.FindName("YellowGlow")
 
 $workArea = [Windows.SystemParameters]::WorkArea
 $window.Left = $workArea.Right - $window.Width - 24
@@ -98,10 +108,69 @@ function New-Brush([string]$color) {
     return [Windows.Media.BrushConverter]::new().ConvertFromString($color)
 }
 
+$yellowOpacityAnimation = [Windows.Media.Animation.DoubleAnimation]::new()
+$yellowOpacityAnimation.From = 0.45
+$yellowOpacityAnimation.To = 1.0
+$yellowOpacityAnimation.Duration = [Windows.Duration]::new([TimeSpan]::FromMilliseconds(900))
+$yellowOpacityAnimation.AutoReverse = $true
+$yellowOpacityAnimation.RepeatBehavior = [Windows.Media.Animation.RepeatBehavior]::Forever
+
+$yellowGlowAnimation = [Windows.Media.Animation.DoubleAnimation]::new()
+$yellowGlowAnimation.From = 0.2
+$yellowGlowAnimation.To = 0.95
+$yellowGlowAnimation.Duration = [Windows.Duration]::new([TimeSpan]::FromMilliseconds(900))
+$yellowGlowAnimation.AutoReverse = $true
+$yellowGlowAnimation.RepeatBehavior = [Windows.Media.Animation.RepeatBehavior]::Forever
+
+$yellowBlurAnimation = [Windows.Media.Animation.DoubleAnimation]::new()
+$yellowBlurAnimation.From = 4
+$yellowBlurAnimation.To = 18
+$yellowBlurAnimation.Duration = [Windows.Duration]::new([TimeSpan]::FromMilliseconds(900))
+$yellowBlurAnimation.AutoReverse = $true
+$yellowBlurAnimation.RepeatBehavior = [Windows.Media.Animation.RepeatBehavior]::Forever
+
+function Start-YellowPulse {
+    $yellowLight.BeginAnimation(
+        [Windows.UIElement]::OpacityProperty,
+        $yellowOpacityAnimation
+    )
+    $yellowGlow.BeginAnimation(
+        [Windows.Media.Effects.DropShadowEffect]::OpacityProperty,
+        $yellowGlowAnimation
+    )
+    $yellowGlow.BeginAnimation(
+        [Windows.Media.Effects.DropShadowEffect]::BlurRadiusProperty,
+        $yellowBlurAnimation
+    )
+}
+
+function Stop-YellowPulse {
+    $yellowLight.BeginAnimation([Windows.UIElement]::OpacityProperty, $null)
+    $yellowGlow.BeginAnimation(
+        [Windows.Media.Effects.DropShadowEffect]::OpacityProperty,
+        $null
+    )
+    $yellowGlow.BeginAnimation(
+        [Windows.Media.Effects.DropShadowEffect]::BlurRadiusProperty,
+        $null
+    )
+    $yellowLight.Opacity = 1
+    $yellowGlow.Opacity = 0
+    $yellowGlow.BlurRadius = 0
+}
+
+$script:currentStatus = $null
+
 function Set-LightState([string]$status, [string]$message) {
+    $statusChanged = $script:currentStatus -ne $status
+
     $redLight.Fill = New-Brush $offColors.red
     $yellowLight.Fill = New-Brush $offColors.yellow
     $greenLight.Fill = New-Brush $offColors.green
+
+    if ($status -ne "waiting" -and $script:currentStatus -eq "waiting") {
+        Stop-YellowPulse
+    }
 
     switch ($status) {
         "running" {
@@ -111,6 +180,12 @@ function Set-LightState([string]$status, [string]$message) {
         "waiting" {
             $yellowLight.Fill = New-Brush $onColors.yellow
             $statusText.Text = "ACTION"
+            if ($statusChanged) {
+                Start-YellowPulse
+                if ($null -ne $script:currentStatus) {
+                    [System.Media.SystemSounds]::Asterisk.Play()
+                }
+            }
         }
         default {
             $redLight.Fill = New-Brush $onColors.red
@@ -118,6 +193,7 @@ function Set-LightState([string]$status, [string]$message) {
         }
     }
 
+    $script:currentStatus = $status
     $window.ToolTip = if ($message) { $message } else { $statusText.Text }
 }
 
