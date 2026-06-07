@@ -13,6 +13,7 @@
 - Claude Code CLI 或 Cursor 官方 Claude Code 扩展
 
 ## 灯光状态
+<img width="1521" height="1053" alt="eb7be9e8996450ddf45c36559892e2c3" src="https://github.com/user-attachments/assets/6709bbc6-9ea9-40db-9470-6cd4da18550c" />
 
 - 绿灯：Agent 正在执行任务
 - 黄灯：Agent 等待用户授权或输入
