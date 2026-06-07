@@ -2,10 +2,20 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-一款适用于 Windows 的桌面红绿灯组件，用于显示 Claude Code CLI
-以及 Cursor 官方 `anthropic.claude-code` 扩展的当前状态。
+一款跨平台 Claude Code 状态灯，支持 Claude Code CLI 和 Cursor 官方
+`anthropic.claude-code` 扩展，并分别提供原生 Windows 和 macOS 界面。
 
-## 环境要求
+## 支持平台
+
+| 平台 | 界面 | 文档 |
+| --- | --- | --- |
+| Windows | WPF 桌面组件和系统托盘 | 当前文档 |
+| macOS 13+ | 原生 SwiftUI 菜单栏应用 | [macOS 中文指南](macos/README.zh-CN.md) |
+
+两个平台使用相同的 Claude 生命周期状态和多 Session 优先级：待操作、
+运行中、已完成。
+
+## Windows 环境要求
 
 - Windows 10 或 Windows 11
 - Windows PowerShell 5.1
@@ -82,7 +92,8 @@ codeagent-light/
 |   |-- remove-claude-hooks.js
 |   |-- demo.ps1
 |   `-- set-status.ps1
-`-- runtime/                   自动生成的状态和日志
+|-- runtime/                   自动生成的状态和日志
+`-- macos/                     原生 macOS 菜单栏实现
 ```
 
 ## 必要文件

@@ -2,10 +2,20 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-Windows desktop traffic light for Claude Code CLI and Cursor's official
-`anthropic.claude-code` extension.
+Cross-platform status light for Claude Code CLI and Cursor's official
+`anthropic.claude-code` extension, with native Windows and macOS interfaces.
 
-## Requirements
+## Platforms
+
+| Platform | Interface | Documentation |
+| --- | --- | --- |
+| Windows | WPF desktop widget and system tray | This README |
+| macOS 13+ | Native SwiftUI menu bar app | [macOS guide](macos/README.md) |
+
+Both platforms use the same Claude lifecycle states and multi-session
+priority: waiting, running, then done.
+
+## Windows Requirements
 
 - Windows 10 or Windows 11
 - Windows PowerShell 5.1
@@ -69,7 +79,8 @@ codeagent-light/
 |   |-- remove-claude-hooks.js
 |   |-- demo.ps1
 |   `-- set-status.ps1
-`-- runtime/                  Generated state and logs
+|-- runtime/                  Generated state and logs
+`-- macos/                    Native macOS menu bar implementation
 ```
 
 ## Required files

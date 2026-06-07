@@ -1,0 +1,5 @@
+macos/*.sh text eol=lf
+macos/**/*.sh text eol=lf
+macos/**/*.swift text eol=lf
+macos/**/*.js text eol=lf
+macos/Package.swift text eol=lf
