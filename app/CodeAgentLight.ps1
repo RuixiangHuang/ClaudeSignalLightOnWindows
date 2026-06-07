@@ -324,20 +324,27 @@ function Update-MenuLanguage {
     $chineseMenuItem.Checked = $script:language -eq "zh-CN"
 }
 
-function Play-NotificationSound {
-    switch ($script:notificationSound) {
-        "asterisk" {
-            [System.Media.SystemSounds]::Asterisk.Play()
-        }
-        "exclamation" {
-            [System.Media.SystemSounds]::Exclamation.Play()
-        }
-        "question" {
-            [System.Media.SystemSounds]::Question.Play()
-        }
-        "beep" {
-            [System.Media.SystemSounds]::Beep.Play()
-        }
+$soundFiles = @{
+    asterisk = Join-Path $env:WINDIR "Media\ding.wav"
+    exclamation = Join-Path $env:WINDIR "Media\chord.wav"
+    question = Join-Path $env:WINDIR "Media\chimes.wav"
+    beep = Join-Path $env:WINDIR "Media\notify.wav"
+}
+
+$soundPlayers = @{}
+foreach ($soundName in $soundFiles.Keys) {
+    $soundPath = $soundFiles[$soundName]
+    if (Test-Path -LiteralPath $soundPath) {
+        $soundPlayers[$soundName] = [System.Media.SoundPlayer]::new($soundPath)
+        $soundPlayers[$soundName].LoadAsync()
+    }
+}
+
+function Play-NotificationSound(
+    [string]$soundName = $script:notificationSound
+) {
+    if ($soundPlayers.ContainsKey($soundName)) {
+        $soundPlayers[$soundName].Play()
     }
 }
 
@@ -433,7 +440,7 @@ function Set-NotificationSound([string]$soundName) {
     Update-MenuLanguage
 
     if ($soundName -ne "none") {
-        Play-NotificationSound
+        Play-NotificationSound $soundName
     }
 }
 
@@ -507,10 +514,7 @@ foreach ($soundName in $soundMenuItems.Keys) {
     $menuItem = $soundMenuItems[$soundName]
     $menuItem.Add_Click({
         param($sender, $eventArgs)
-        $selectedSound = [string]$sender.Tag
-        $window.Dispatcher.Invoke(
-            [action]{ Set-NotificationSound $selectedSound }
-        )
+        Set-NotificationSound ([string]$sender.Tag)
     })
 }
 
@@ -553,5 +557,8 @@ finally {
     }
     foreach ($icon in $trayIcons.Values) {
         $icon.Dispose()
+    }
+    foreach ($player in $soundPlayers.Values) {
+        $player.Dispose()
     }
 }

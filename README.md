@@ -44,9 +44,10 @@ Simplified Chinese. The selection is remembered for the next launch.
 The tray icon is a compact traffic light and follows the current red, yellow,
 or green agent state.
 
-Use the `Notification Sound` submenu to choose Asterisk, Exclamation,
-Question, Beep, or None. Selecting a sound plays a preview, and the choice is
-remembered for the next launch.
+Use the `Notification Sound` submenu to choose Ding, Chord, Chimes, Notify,
+or None. These use distinct files from `Windows\Media` rather than Windows
+sound-scheme event mappings. Selecting a sound plays a preview, and the choice
+is remembered for the next launch.
 
 ## Project structure
 
