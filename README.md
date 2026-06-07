@@ -1,5 +1,7 @@
 # Code Agent Light
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 Windows desktop traffic light for Claude Code CLI and Cursor's official
 `anthropic.claude-code` extension.
 
