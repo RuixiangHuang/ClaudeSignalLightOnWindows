@@ -34,7 +34,9 @@ The installer creates a timestamped backup of `~/.claude/settings.json` and
 preserves Hooks installed by other tools.
 
 Drag the widget with the left mouse button. Hover to see the project and
-session ID. Right-click to close it.
+session ID. Right-click the widget to hide it in the Windows notification
+area. Double-click the tray icon to restore it. Use the tray icon's `Exit`
+menu item to stop the app completely.
 
 ## Project structure
 
@@ -75,7 +77,7 @@ the widget and Claude Code are closed.
 
 ## Uninstall
 
-1. Right-click the widget to close it.
+1. Right-click the tray icon and select `Exit`.
 2. Double-click `uninstall-claude-hooks.cmd`.
 3. Delete the project folder if it is no longer needed.
 

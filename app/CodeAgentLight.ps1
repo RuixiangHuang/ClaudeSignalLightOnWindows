@@ -29,6 +29,8 @@ Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 Add-Type -AssemblyName System
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
 
 $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -87,6 +89,18 @@ $yellowLight = $window.FindName("YellowLight")
 $greenLight = $window.FindName("GreenLight")
 $statusText = $window.FindName("StatusText")
 $yellowGlow = $window.FindName("YellowGlow")
+
+$notifyIcon = [System.Windows.Forms.NotifyIcon]::new()
+$notifyIcon.Icon = [System.Drawing.SystemIcons]::Information
+$notifyIcon.Text = "Code Agent Light"
+$notifyIcon.Visible = $true
+
+$trayMenu = [System.Windows.Forms.ContextMenuStrip]::new()
+$showMenuItem = $trayMenu.Items.Add("Show Widget")
+$hideMenuItem = $trayMenu.Items.Add("Hide Widget")
+[void]$trayMenu.Items.Add([System.Windows.Forms.ToolStripSeparator]::new())
+$exitMenuItem = $trayMenu.Items.Add("Exit")
+$notifyIcon.ContextMenuStrip = $trayMenu
 
 $workArea = [Windows.SystemParameters]::WorkArea
 $window.Left = $workArea.Right - $window.Width - 24
@@ -160,6 +174,17 @@ function Stop-YellowPulse {
 }
 
 $script:currentStatus = $null
+$script:allowExit = $false
+
+function Show-Widget {
+    $window.Show()
+    $window.Activate()
+    $window.Topmost = $true
+}
+
+function Hide-Widget {
+    $window.Hide()
+}
 
 function Set-LightState([string]$status, [string]$message) {
     $statusChanged = $script:currentStatus -ne $status
@@ -195,6 +220,10 @@ function Set-LightState([string]$status, [string]$message) {
 
     $script:currentStatus = $status
     $window.ToolTip = if ($message) { $message } else { $statusText.Text }
+    $trayMessage = if ($message) { $message } else { $statusText.Text }
+    $notifyIcon.Text = "Code Agent Light - $($statusText.Text)"
+    $notifyIcon.BalloonTipTitle = "Code Agent Light"
+    $notifyIcon.BalloonTipText = $trayMessage
 }
 
 function Get-AgentState {
@@ -236,7 +265,38 @@ $window.Add_MouseLeftButtonDown({
 })
 
 $window.Add_MouseRightButtonUp({
-    $window.Close()
+    Hide-Widget
+})
+
+$window.Add_Closing({
+    param($sender, $eventArgs)
+    if (-not $script:allowExit) {
+        $eventArgs.Cancel = $true
+        Hide-Widget
+    }
+})
+
+$showMenuItem.Add_Click({
+    $window.Dispatcher.Invoke([action]{ Show-Widget })
+})
+
+$hideMenuItem.Add_Click({
+    $window.Dispatcher.Invoke([action]{ Hide-Widget })
+})
+
+$notifyIcon.Add_DoubleClick({
+    $window.Dispatcher.Invoke([action]{ Show-Widget })
+})
+
+$exitMenuItem.Add_Click({
+    $window.Dispatcher.Invoke([action]{
+        $script:allowExit = $true
+        $timer.Stop()
+        $notifyIcon.Visible = $false
+        $notifyIcon.Dispose()
+        $trayMenu.Dispose()
+        $window.Close()
+    })
 })
 
 $timer = [Windows.Threading.DispatcherTimer]::new()
@@ -249,4 +309,15 @@ $timer.Add_Tick({
 $initialState = Get-AgentState
 Set-LightState $initialState.status $initialState.message
 $timer.Start()
-$window.ShowDialog() | Out-Null
+try {
+    $window.ShowDialog() | Out-Null
+}
+finally {
+    if ($notifyIcon) {
+        $notifyIcon.Visible = $false
+        $notifyIcon.Dispose()
+    }
+    if ($trayMenu) {
+        $trayMenu.Dispose()
+    }
+}
