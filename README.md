@@ -13,7 +13,7 @@ Windows desktop traffic light for Claude Code CLI and Cursor's official
 - Claude Code CLI or Cursor's official Claude Code extension
 
 ## Light states
-
+<img width="1521" height="1053" alt="eb7be9e8996450ddf45c36559892e2c3" src="https://github.com/user-attachments/assets/6e03387b-982f-49be-8805-42fdb6a31c87" />
 - Green: the agent is working
 - Yellow: the agent needs permission or user input
 - Red: the response is complete
