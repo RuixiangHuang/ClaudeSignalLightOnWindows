@@ -8,6 +8,7 @@ $ErrorActionPreference = "Stop"
 $runtimePath = Join-Path (Split-Path -Parent $PSScriptRoot) "runtime"
 New-Item -ItemType Directory -Path $runtimePath -Force | Out-Null
 $logPath = Join-Path $runtimePath "widget.log"
+$settingsPath = Join-Path $runtimePath "settings.json"
 
 trap {
     $entry = "[{0}] {1}`r`n{2}`r`n" -f (
@@ -31,6 +32,16 @@ Add-Type -AssemblyName WindowsBase
 Add-Type -AssemblyName System
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
+
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+
+public static class NativeIcon {
+    [DllImport("user32.dll", CharSet = CharSet.Auto)]
+    public static extern bool DestroyIcon(IntPtr handle);
+}
+"@
 
 $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -90,16 +101,123 @@ $greenLight = $window.FindName("GreenLight")
 $statusText = $window.FindName("StatusText")
 $yellowGlow = $window.FindName("YellowGlow")
 
+$script:language = "en"
+$script:notificationSound = "asterisk"
+if (Test-Path -LiteralPath $settingsPath) {
+    try {
+        $savedSettings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
+        if ($savedSettings.language -in @("en", "zh-CN")) {
+            $script:language = [string]$savedSettings.language
+        }
+        if ($savedSettings.notificationSound -in @(
+            "asterisk",
+            "exclamation",
+            "question",
+            "beep",
+            "none"
+        )) {
+            $script:notificationSound = [string]$savedSettings.notificationSound
+        }
+    }
+    catch {
+        # Ignore malformed optional settings and use English.
+    }
+}
+
+$translationsPath = Join-Path $PSScriptRoot "translations.json"
+$translations = Get-Content -LiteralPath $translationsPath -Raw -Encoding UTF8 |
+    ConvertFrom-Json
+
+function New-TrafficLightIcon([string]$activeStatus) {
+    $bitmap = [System.Drawing.Bitmap]::new(
+        32,
+        32,
+        [System.Drawing.Imaging.PixelFormat]::Format32bppArgb
+    )
+    $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+    $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $graphics.Clear([System.Drawing.Color]::Transparent)
+
+    $housingPath = [System.Drawing.Drawing2D.GraphicsPath]::new()
+    $housingPath.AddArc(7, 1, 8, 8, 180, 90)
+    $housingPath.AddArc(17, 1, 8, 8, 270, 90)
+    $housingPath.AddArc(17, 23, 8, 8, 0, 90)
+    $housingPath.AddArc(7, 23, 8, 8, 90, 90)
+    $housingPath.CloseFigure()
+
+    $housingBrush = [System.Drawing.SolidBrush]::new(
+        [System.Drawing.Color]::FromArgb(255, 24, 28, 34)
+    )
+    $housingPen = [System.Drawing.Pen]::new(
+        [System.Drawing.Color]::FromArgb(255, 92, 100, 112),
+        1.2
+    )
+    $graphics.FillPath($housingBrush, $housingPath)
+    $graphics.DrawPath($housingPen, $housingPath)
+
+    $lights = @(
+        @{ status = "done"; y = 4; on = "#FF3948"; off = "#54232A" },
+        @{ status = "waiting"; y = 12; on = "#FFC83D"; off = "#59491F" },
+        @{ status = "running"; y = 20; on = "#31D17C"; off = "#214C35" }
+    )
+
+    foreach ($light in $lights) {
+        $color = if ($activeStatus -eq $light.status) {
+            [System.Drawing.ColorTranslator]::FromHtml($light.on)
+        }
+        else {
+            [System.Drawing.ColorTranslator]::FromHtml($light.off)
+        }
+        $lightBrush = [System.Drawing.SolidBrush]::new($color)
+        $graphics.FillEllipse($lightBrush, 12, $light.y, 8, 8)
+        $lightBrush.Dispose()
+    }
+
+    $handle = $bitmap.GetHicon()
+    try {
+        return [System.Drawing.Icon]::FromHandle($handle).Clone()
+    }
+    finally {
+        [void][NativeIcon]::DestroyIcon($handle)
+        $housingPen.Dispose()
+        $housingBrush.Dispose()
+        $housingPath.Dispose()
+        $graphics.Dispose()
+        $bitmap.Dispose()
+    }
+}
+
+$trayIcons = @{
+    running = New-TrafficLightIcon "running"
+    waiting = New-TrafficLightIcon "waiting"
+    done = New-TrafficLightIcon "done"
+}
+
 $notifyIcon = [System.Windows.Forms.NotifyIcon]::new()
-$notifyIcon.Icon = [System.Drawing.SystemIcons]::Information
+$notifyIcon.Icon = $trayIcons.done
 $notifyIcon.Text = "Code Agent Light"
 $notifyIcon.Visible = $true
 
 $trayMenu = [System.Windows.Forms.ContextMenuStrip]::new()
-$showMenuItem = $trayMenu.Items.Add("Show Widget")
-$hideMenuItem = $trayMenu.Items.Add("Hide Widget")
+$showMenuItem = $trayMenu.Items.Add("")
+$hideMenuItem = $trayMenu.Items.Add("")
+$languageMenuItem = [System.Windows.Forms.ToolStripMenuItem]::new()
+[void]$trayMenu.Items.Add($languageMenuItem)
+$englishMenuItem = [System.Windows.Forms.ToolStripMenuItem]::new()
+$chineseMenuItem = [System.Windows.Forms.ToolStripMenuItem]::new()
+[void]$languageMenuItem.DropDownItems.Add($englishMenuItem)
+[void]$languageMenuItem.DropDownItems.Add($chineseMenuItem)
+$soundMenuItem = [System.Windows.Forms.ToolStripMenuItem]::new()
+[void]$trayMenu.Items.Add($soundMenuItem)
+$soundMenuItems = @{}
+foreach ($soundName in @("asterisk", "exclamation", "question", "beep", "none")) {
+    $item = [System.Windows.Forms.ToolStripMenuItem]::new()
+    $item.Tag = $soundName
+    [void]$soundMenuItem.DropDownItems.Add($item)
+    $soundMenuItems[$soundName] = $item
+}
 [void]$trayMenu.Items.Add([System.Windows.Forms.ToolStripSeparator]::new())
-$exitMenuItem = $trayMenu.Items.Add("Exit")
+$exitMenuItem = $trayMenu.Items.Add("")
 $notifyIcon.ContextMenuStrip = $trayMenu
 
 $workArea = [Windows.SystemParameters]::WorkArea
@@ -174,7 +292,54 @@ function Stop-YellowPulse {
 }
 
 $script:currentStatus = $null
+$script:currentMessage = $null
 $script:allowExit = $false
+
+function Get-Text([string]$key) {
+    $languagePack = $translations.PSObject.Properties[$script:language].Value
+    return [string]$languagePack.PSObject.Properties[$key].Value
+}
+
+function Save-Settings {
+    [ordered]@{
+        language = $script:language
+        notificationSound = $script:notificationSound
+    } | ConvertTo-Json | Set-Content -LiteralPath $settingsPath -Encoding UTF8
+}
+
+function Update-MenuLanguage {
+    $showMenuItem.Text = Get-Text "show"
+    $hideMenuItem.Text = Get-Text "hide"
+    $languageMenuItem.Text = Get-Text "language"
+    $englishMenuItem.Text = Get-Text "english"
+    $chineseMenuItem.Text = Get-Text "chinese"
+    $soundMenuItem.Text = Get-Text "notificationSound"
+    foreach ($soundName in $soundMenuItems.Keys) {
+        $soundMenuItems[$soundName].Text = Get-Text "sound_$soundName"
+        $soundMenuItems[$soundName].Checked =
+            $script:notificationSound -eq $soundName
+    }
+    $exitMenuItem.Text = Get-Text "exit"
+    $englishMenuItem.Checked = $script:language -eq "en"
+    $chineseMenuItem.Checked = $script:language -eq "zh-CN"
+}
+
+function Play-NotificationSound {
+    switch ($script:notificationSound) {
+        "asterisk" {
+            [System.Media.SystemSounds]::Asterisk.Play()
+        }
+        "exclamation" {
+            [System.Media.SystemSounds]::Exclamation.Play()
+        }
+        "question" {
+            [System.Media.SystemSounds]::Question.Play()
+        }
+        "beep" {
+            [System.Media.SystemSounds]::Beep.Play()
+        }
+    }
+}
 
 function Show-Widget {
     $window.Show()
@@ -186,7 +351,11 @@ function Hide-Widget {
     $window.Hide()
 }
 
-function Set-LightState([string]$status, [string]$message) {
+function Set-LightState(
+    [string]$status,
+    [string]$message,
+    [bool]$playTransitionSound = $true
+) {
     $statusChanged = $script:currentStatus -ne $status
 
     $redLight.Fill = New-Brush $offColors.red
@@ -200,30 +369,72 @@ function Set-LightState([string]$status, [string]$message) {
     switch ($status) {
         "running" {
             $greenLight.Fill = New-Brush $onColors.green
-            $statusText.Text = "RUNNING"
+            $statusText.Text = Get-Text "running"
         }
         "waiting" {
             $yellowLight.Fill = New-Brush $onColors.yellow
-            $statusText.Text = "ACTION"
+            $statusText.Text = Get-Text "waiting"
             if ($statusChanged) {
                 Start-YellowPulse
-                if ($null -ne $script:currentStatus) {
-                    [System.Media.SystemSounds]::Asterisk.Play()
+                if ($playTransitionSound -and $null -ne $script:currentStatus) {
+                    Play-NotificationSound
                 }
             }
         }
         default {
             $redLight.Fill = New-Brush $onColors.red
-            $statusText.Text = "DONE"
+            $statusText.Text = Get-Text "done"
         }
     }
 
     $script:currentStatus = $status
+    $script:currentMessage = $message
+    $notifyIcon.Icon = if ($trayIcons.ContainsKey($status)) {
+        $trayIcons[$status]
+    }
+    else {
+        $trayIcons.done
+    }
     $window.ToolTip = if ($message) { $message } else { $statusText.Text }
     $trayMessage = if ($message) { $message } else { $statusText.Text }
-    $notifyIcon.Text = "Code Agent Light - $($statusText.Text)"
+    $notifyText = "Code Agent Light - $($statusText.Text)"
+    $notifyIcon.Text = $notifyText.Substring(0, [Math]::Min(63, $notifyText.Length))
     $notifyIcon.BalloonTipTitle = "Code Agent Light"
     $notifyIcon.BalloonTipText = $trayMessage
+}
+
+function Set-Language([string]$language) {
+    if ($language -notin @("en", "zh-CN")) {
+        return
+    }
+
+    $script:language = $language
+    Save-Settings
+    Update-MenuLanguage
+
+    if ($script:currentStatus) {
+        Set-LightState $script:currentStatus $script:currentMessage $false
+    }
+}
+
+function Set-NotificationSound([string]$soundName) {
+    if ($soundName -notin @(
+        "asterisk",
+        "exclamation",
+        "question",
+        "beep",
+        "none"
+    )) {
+        return
+    }
+
+    $script:notificationSound = $soundName
+    Save-Settings
+    Update-MenuLanguage
+
+    if ($soundName -ne "none") {
+        Play-NotificationSound
+    }
 }
 
 function Get-AgentState {
@@ -284,6 +495,25 @@ $hideMenuItem.Add_Click({
     $window.Dispatcher.Invoke([action]{ Hide-Widget })
 })
 
+$englishMenuItem.Add_Click({
+    $window.Dispatcher.Invoke([action]{ Set-Language "en" })
+})
+
+$chineseMenuItem.Add_Click({
+    $window.Dispatcher.Invoke([action]{ Set-Language "zh-CN" })
+})
+
+foreach ($soundName in $soundMenuItems.Keys) {
+    $menuItem = $soundMenuItems[$soundName]
+    $menuItem.Add_Click({
+        param($sender, $eventArgs)
+        $selectedSound = [string]$sender.Tag
+        $window.Dispatcher.Invoke(
+            [action]{ Set-NotificationSound $selectedSound }
+        )
+    })
+}
+
 $notifyIcon.Add_DoubleClick({
     $window.Dispatcher.Invoke([action]{ Show-Widget })
 })
@@ -307,6 +537,7 @@ $timer.Add_Tick({
 })
 
 $initialState = Get-AgentState
+Update-MenuLanguage
 Set-LightState $initialState.status $initialState.message
 $timer.Start()
 try {
@@ -319,5 +550,8 @@ finally {
     }
     if ($trayMenu) {
         $trayMenu.Dispose()
+    }
+    foreach ($icon in $trayIcons.Values) {
+        $icon.Dispose()
     }
 }

@@ -1,0 +1,36 @@
+{
+  "en": {
+    "show": "Show Widget",
+    "hide": "Hide Widget",
+    "language": "Language",
+    "english": "English",
+    "chinese": "Simplified Chinese",
+    "notificationSound": "Notification Sound",
+    "sound_asterisk": "Asterisk (Recommended)",
+    "sound_exclamation": "Exclamation",
+    "sound_question": "Question",
+    "sound_beep": "Beep",
+    "sound_none": "None",
+    "exit": "Exit",
+    "running": "RUNNING",
+    "waiting": "ACTION",
+    "done": "DONE"
+  },
+  "zh-CN": {
+    "show": "显示组件",
+    "hide": "隐藏组件",
+    "language": "语言",
+    "english": "English",
+    "chinese": "简体中文",
+    "notificationSound": "提示音",
+    "sound_asterisk": "清脆提示（推荐）",
+    "sound_exclamation": "明显提醒",
+    "sound_question": "柔和询问",
+    "sound_beep": "简短蜂鸣",
+    "sound_none": "静音",
+    "exit": "退出",
+    "running": "运行中",
+    "waiting": "待操作",
+    "done": "已完成"
+  }
+}

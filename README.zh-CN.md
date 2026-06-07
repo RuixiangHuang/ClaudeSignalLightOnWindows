@@ -41,6 +41,14 @@
 - 单击组件右键，将窗口隐藏到 Windows 系统托盘
 - 双击系统托盘图标，重新显示组件
 - 通过托盘图标右键菜单中的 `Exit` 完全退出程序
+- 通过托盘菜单的 `Language / 语言` 选择 English 或简体中文
+
+语言设置会自动保存，下次启动时继续使用上一次的选择。
+
+系统托盘图标采用迷你红绿灯样式，并会跟随 Agent 状态点亮红、黄或绿灯。
+
+通过托盘菜单中的“提示音”可以选择清脆提示、明显提醒、柔和询问、简短蜂鸣
+或静音。选择声音时会立即试听，并自动保存供下次启动使用。
 
 ## Cursor 支持
 
@@ -64,7 +72,8 @@ codeagent-light/
 |-- demo.cmd                   可选的红绿灯演示
 |-- set-status.cmd             可选的手动状态命令
 |-- app/
-|   `-- CodeAgentLight.ps1     WPF 桌面组件
+|   |-- CodeAgentLight.ps1     WPF 桌面组件
+|   `-- translations.json      托盘菜单和状态文字翻译
 |-- hooks/
 |   `-- claude-hook.js         接收 UTF-8 Claude Hook 事件
 |-- tools/
@@ -81,6 +90,7 @@ codeagent-light/
 
 - `start-widget.cmd`
 - `app/CodeAgentLight.ps1`
+- `app/translations.json`
 - `hooks/claude-hook.js`
 - `install-claude-hooks.cmd`
 - `tools/configure-claude-hooks.js`

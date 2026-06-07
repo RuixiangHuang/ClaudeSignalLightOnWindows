@@ -38,6 +38,16 @@ session ID. Right-click the widget to hide it in the Windows notification
 area. Double-click the tray icon to restore it. Use the tray icon's `Exit`
 menu item to stop the app completely.
 
+Use the tray icon's `Language` submenu to switch between English and
+Simplified Chinese. The selection is remembered for the next launch.
+
+The tray icon is a compact traffic light and follows the current red, yellow,
+or green agent state.
+
+Use the `Notification Sound` submenu to choose Asterisk, Exclamation,
+Question, Beep, or None. Selecting a sound plays a preview, and the choice is
+remembered for the next launch.
+
 ## Project structure
 
 ```text
@@ -49,7 +59,8 @@ codeagent-light/
 |-- demo.cmd                  Optional traffic-light demo
 |-- set-status.cmd            Optional manual status command
 |-- app/
-|   `-- CodeAgentLight.ps1    WPF desktop widget
+|   |-- CodeAgentLight.ps1    WPF desktop widget
+|   `-- translations.json     Tray menu and status translations
 |-- hooks/
 |   `-- claude-hook.js        Receives UTF-8 Claude hook events
 |-- tools/
@@ -66,6 +77,7 @@ For normal Claude detection, these files are required:
 
 - `start-widget.cmd`
 - `app/CodeAgentLight.ps1`
+- `app/translations.json`
 - `hooks/claude-hook.js`
 - `install-claude-hooks.cmd`
 - `tools/configure-claude-hooks.js`
